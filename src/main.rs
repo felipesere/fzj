@@ -27,7 +27,7 @@ fn main() -> Result<()> {
     let opts = options().run();
 
     let _ = ctrlc::set_handler(move || {
-        // DO NOTHING?
+        // this is oddly load-bearing to reset the curser after hitting control-c
     });
 
     // Read JSON from stdin
