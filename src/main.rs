@@ -1,8 +1,11 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use bpaf::Bpaf;
-use dialoguer::FuzzySelect;
+use dialoguer::{FuzzySelect, console::Term, theme::ColorfulTheme};
 use serde_json::Value;
-use std::io::{self, Read};
+use std::{
+    io::{self, ErrorKind, Read},
+    process,
+};
 
 #[derive(Debug, Clone, Bpaf)]
 #[bpaf(options)]
@@ -22,6 +25,10 @@ struct Options {
 
 fn main() -> Result<()> {
     let opts = options().run();
+
+    let _ = ctrlc::set_handler(move || {
+        // DO NOTHING?
+    });
 
     // Read JSON from stdin
     let mut input = String::new();
@@ -57,12 +64,27 @@ fn main() -> Result<()> {
         .collect();
 
     // Show fuzzy selection dialog
-    let selection = FuzzySelect::new()
-        .with_prompt("Select an item")
+    let selection = FuzzySelect::with_theme(&ColorfulTheme::default())
+        .with_prompt("Select an item:")
         .items(&items)
         .default(0)
-        .interact()
-        .context("Failed to display selection dialog")?;
+        .highlight_matches(true)
+        .interact_opt();
+
+    let selection = match selection {
+        Ok(Some(selection)) => selection,
+        Ok(None) => {
+            let _ = Term::stderr().show_cursor();
+            process::exit(1);
+        }
+        Err(dialoguer::Error::IO(io_err)) => {
+            let _ = Term::stderr().show_cursor();
+            if io_err.kind() == ErrorKind::Interrupted {
+                process::exit(1);
+            }
+            bail!("{io_err:?}")
+        }
+    };
 
     // Get the selected JSON object
     let selected = &array[selection];
