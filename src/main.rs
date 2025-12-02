@@ -1,7 +1,8 @@
 use anyhow::{Context, Result, bail};
 use bpaf::Bpaf;
 use dialoguer::{FuzzySelect, console::Term, theme::ColorfulTheme};
-use serde_json::Value;
+use runtime_format::{FormatArgs, FormatKey, FormatKeyError};
+use serde_json::{Map, Value};
 use std::{
     io::{self, ErrorKind, Read},
     process,
@@ -17,6 +18,10 @@ struct Options {
     /// JSON path to extract nested array (e.g., "data.items")
     #[bpaf(long("dig"), argument("PATH"), optional)]
     dig: Option<String>,
+
+    /// Comma-separated list of fields to output in the final result
+    #[bpaf(long("format"), argument("FORMAT"), optional)]
+    format: Option<String>,
 
     /// Comma-separated list of fields to output in the final result
     #[bpaf(long("out"), argument("FIELDS"), optional)]
@@ -60,7 +65,7 @@ fn main() -> Result<()> {
     // Create display strings for each item
     let items: Vec<String> = array
         .iter()
-        .map(|item| format_item(item, display_fields.as_ref()))
+        .map(|item| format_item(item, display_fields.as_ref(), opts.format.as_ref()))
         .collect();
 
     // Show fuzzy selection dialog
@@ -110,7 +115,34 @@ fn parse_field_list(fields: &str) -> Vec<String> {
         .collect()
 }
 
-fn format_item(item: &Value, fields: Option<&Vec<String>>) -> String {
+#[derive(Debug)]
+struct ExtractKeys(Map<String, Value>);
+
+impl FormatKey for ExtractKeys {
+    fn fmt(
+        &self,
+        key: &str,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> Result<(), runtime_format::FormatKeyError> {
+        match self.0.get(key) {
+            Some(v) => {
+                let formatted = match v {
+                    Value::String(s) => s.clone(),
+                    Value::Number(n) => n.to_string(),
+                    Value::Bool(b) => b.to_string(),
+                    Value::Null => "null".to_string(),
+                    Value::Array(_) => "[...]".to_string(),
+                    Value::Object(_) => "{...}".to_string(),
+                };
+
+                f.write_str(&formatted).map_err(FormatKeyError::Fmt)
+            }
+            None => Err(FormatKeyError::UnknownKey),
+        }
+    }
+}
+
+fn format_item(item: &Value, fields: Option<&Vec<String>>, format: Option<&String>) -> String {
     match item {
         Value::Object(map) => {
             let fields_to_show = if let Some(field_list) = fields {
@@ -138,6 +170,8 @@ fn format_item(item: &Value, fields: Option<&Vec<String>>) -> String {
 
             if parts.is_empty() {
                 "{empty}".to_string()
+            } else if let Some(fmt) = format {
+                FormatArgs::new(fmt.as_str(), &ExtractKeys(map.clone())).to_string()
             } else {
                 parts.join(", ")
             }
