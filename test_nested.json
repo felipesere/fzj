@@ -1,0 +1,9 @@
+{
+  "data": {
+    "items": [
+      {"id": 1, "name": "apple", "price": 1.50},
+      {"id": 2, "name": "banana", "price": 0.75},
+      {"id": 3, "name": "cherry", "price": 2.00}
+    ]
+  }
+}
