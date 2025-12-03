@@ -61,9 +61,9 @@ jobs:
 
       - name: Update formula
         run: |
-          git clone git@github.com:felipesere/homebrew-tap.git
+          git clone https://github.com/felipesere/homebrew-tap.git
           cd homebrew-tap
-          REPO_NAME=${{ github.repository | split('/') | pop }}
+          REPO_NAME="fzj"
           git switch -c update-$REPO_NAME-v${{ steps.version.outputs.version }}
           cat > Formula/fzj.rb << 'EOF'
           class Fzj < Formula
