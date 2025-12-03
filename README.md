@@ -44,6 +44,16 @@ echo $RAW_JSON | fzj --fields count,name
 
 **Note**: If `--fields` is not specified, all fields from the JSON objects are displayed.
 
+### Format string (--format)
+
+Control what string is printed to the user using a basic format string.
+Access keys from the JSON object with `{name}`.
+
+```bash
+echo $RAW_JSON | fzj --format "{name} has count {count}"
+# Shows 'foo has count 4' and 'far has count 8' and so on...
+```
+
 ### Nested Array Extraction (`--dig`)
 
 When your input is not a top-level array but contains nested arrays, use `--dig` to extract the array first.
