@@ -145,6 +145,10 @@ impl FormatKey for ExtractKeys {
 fn format_item(item: &Value, fields: Option<&Vec<String>>, format: Option<&String>) -> String {
     match item {
         Value::Object(map) => {
+            if let Some(fmt) = format {
+                return FormatArgs::new(fmt.as_str(), &ExtractKeys(map.clone())).to_string();
+            }
+
             let fields_to_show = if let Some(field_list) = fields {
                 field_list.clone()
             } else {
@@ -163,20 +167,18 @@ fn format_item(item: &Value, fields: Option<&Vec<String>>, format: Option<&Strin
                             Value::Array(_) => "[...]".to_string(),
                             Value::Object(_) => "{...}".to_string(),
                         };
-                        format!("{}: {}", key, formatted)
+                        format!("{key}: {formatted}")
                     })
                 })
                 .collect();
 
             if parts.is_empty() {
                 "{empty}".to_string()
-            } else if let Some(fmt) = format {
-                FormatArgs::new(fmt.as_str(), &ExtractKeys(map.clone())).to_string()
             } else {
                 parts.join(", ")
             }
         }
-        _ => format!("{}", item),
+        _ => format!("{item}"),
     }
 }
 
