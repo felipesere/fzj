@@ -9,7 +9,6 @@ on:
         description: 'Release tag (e.g., v0.1.1)'
         required: true
         type: string
-
 jobs:
   update-formula:
     runs-on: ubuntu-latest
@@ -61,10 +60,11 @@ jobs:
 
       - name: Update formula
         run: |
-          git clone git@github.com:felipesere/homebrew-tap.git
+          git clone https://github.com/felipesere/homebrew-tap.git
           cd homebrew-tap
-          REPO_NAME=${{ github.repository | split('/') | pop }}
-          git switch -c update-$REPO_NAME-v${{ steps.version.outputs.version }}
+          REPO_NAME="fzj"
+          BRANCH_NAME=update-$REPO_NAME-v${{ steps.version.outputs.version }}
+          git switch -c $BRANCH_NAME
           cat > Formula/fzj.rb << 'EOF'
           class Fzj < Formula
             desc "Fzf-like command line tool that takes JSON as input, allows the user to select, and then outputs JSON again."
@@ -105,4 +105,9 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Formula/fzj.rb
           git commit -m "Update formula to version ${{ steps.version.outputs.version }}"
-          git push
+          gh pr create --repo felipesere/homebrew-tap \
+            --title "Update fzj to v${{ steps.version.outputs.version }}" \
+            --body "Automated update of fzj formula to version ${{ steps.version.outputs.version }}" \
+            --head $BRANCH_NAME
+        env:
+          GH_TOKEN: ${{ secrets.COMMITTER_TOKEN }}
