@@ -1,7 +1,7 @@
 use anyhow::{Context, Result, bail};
 use bpaf::Bpaf;
 use dialoguer::{FuzzySelect, console::Term, theme::ColorfulTheme};
-use runtime_format::{FormatArgs, FormatKey, FormatKeyError};
+use runtime_format::{FormatArgs, FormatKey, FormatKeyError, ParsedFmt};
 use serde_json::{Map, Value};
 use std::{
     io::{self, ErrorKind, Read},
@@ -61,11 +61,17 @@ fn main() -> Result<()> {
     // Parse field lists
     let display_fields = opts.fields.as_ref().map(|f| parse_field_list(f));
     let output_fields = opts.out.as_ref().map(|f| parse_field_list(f));
+    let output_format = opts
+        .format
+        .as_deref()
+        .map(ParsedFmt::new)
+        .transpose()
+        .map_err(|e| anyhow::anyhow!("invalid format string: {e}"))?;
 
     // Create display strings for each item
     let items: Vec<String> = array
         .iter()
-        .map(|item| format_item(item, display_fields.as_ref(), opts.format.as_ref()))
+        .map(|item| format_item(item, display_fields.as_ref(), output_format.as_ref()))
         .collect();
 
     // Show fuzzy selection dialog
@@ -142,11 +148,15 @@ impl FormatKey for ExtractKeys {
     }
 }
 
-fn format_item(item: &Value, fields: Option<&Vec<String>>, format: Option<&String>) -> String {
+fn format_item<'fmt>(
+    item: &Value,
+    fields: Option<&Vec<String>>,
+    format: Option<&'fmt ParsedFmt<'fmt>>,
+) -> String {
     match item {
         Value::Object(map) => {
             if let Some(fmt) = format {
-                return FormatArgs::new(fmt.as_str(), &ExtractKeys(map.clone())).to_string();
+                return FormatArgs::new(fmt, &ExtractKeys(map.clone())).to_string();
             }
 
             let fields_to_show = if let Some(field_list) = fields {
